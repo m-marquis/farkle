@@ -1,6 +1,7 @@
 from cmath import inf
 import numpy as np
 
+# TODO: further strategy adjustments, plotting distributions of simulation score results 
 
 class DiceRoller:
 
@@ -9,6 +10,7 @@ class DiceRoller:
         self.total_score = 0
         self.unscored_dice = self.dice_nums
         self.bank_thresh = inf
+        self.score_list = []
 
     def roll_dice(self, n):
         return np.random.randint(1, 7, n)
@@ -20,6 +22,7 @@ class DiceRoller:
 
         # Roll until there is no more scoring
         new_score = inf
+        self.total_score = 0
         while new_score > 0 and self.total_score < self.bank_thresh:
             self.unscored_dice = self.roll_dice(self.unscored_dice.size)
             tmp = self.unscored_dice
@@ -30,21 +33,33 @@ class DiceRoller:
             # print('New total score: ' + str(self.total_score))
         
         # Check to see if the rolling ended with a Farkle, bank, or hot dice
-        if self.unscored_dice.size > 0:
+        if self.unscored_dice.size > 0 and self.total_score < self.bank_thresh:
             # Farkle
-            print('Farkle! Final score was ' + str(self.total_score))
+            # print('Farkle! Final score was ' + str(self.total_score))
+            print('Farkle!')
             self.total_score = 0
+            self.score_list.append(0)
         elif self.total_score >= self.bank_thresh:
             # Banked score
+            self.score_list.append(self.total_score)
             print('Banked score of ' + str(self.total_score))
         else:
             # Hot dice - Reset dice_nums and unscored_dice but not total score
             self.dice_nums = self.roll_dice(6)
             self.unscored_dice = self.dice_nums
-            print('Hot dice! Current score is ' + str(self.total_score))
+
+            # Give it one more roll for good measure
+            new_score = self.calc_score(self.unscored_dice)
+            if new_score > 0:
+                self.total_score += new_score
+                self.score_list.append(self.total_score)
+                print('Hot dice! Final score is ' + str(self.total_score))
+            else:
+                print('Post-hot dice Farkle!')
+                self.score_list.append(0)
 
 
-
+            # print('Hot dice! Current score is ' + str(self.total_score))
 
     # Calculate score for a given set of dice
     def calc_score(self, dice_nums):
@@ -118,12 +133,21 @@ class DiceRoller:
 
 
 test = DiceRoller()
-test.bank_thresh = 300
+test.bank_thresh = 250
 # print('Starting score: ' + str(test.total_score))
 # # test.dice_nums = np.asarray([5, 1, 1, 6, 6, 3])
 # test.take_turn()
 # # print('Starting dice roll: ' + str(test.dice_nums))
 # print('Final score: ' + str(test.total_score))
 
-for i in range(100):
-    test.take_turn()
+mean_scores = []
+test_thresholds = [150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500] 
+for i in test_thresholds:
+    test = DiceRoller()
+    test.bank_thresh = i
+    for j in range(200000):
+        test.take_turn()
+    mean_scores.append(np.mean(test.score_list))
+
+for i, j in zip(test_thresholds, mean_scores):
+    print('Thresh ' + str(i) + ' mean score: ' + str(j))
